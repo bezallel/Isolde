@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- <link rel="stylesheet" href="../static/css/energy.css"> -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='energy.css') }}">
+
+    <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
+    
+    
+    <title>Isolde</title>
+</head>
+<body>
+
+<header>
+    <h1>ISOLDÉ</h1>
+</header>
+
+<main>
+  <!-- Top cards: Battery + Grid status + Previous Peak -->
+  <div class="top-cards">
+    <div class="card battery-card" title="Current energy stored in the home battery">
+      <h2>Battery SOC</h2>
+      <div id="batterySOC">0 kWh</div>
+    </div>
+
+    <div class="card status-card" title="Shows if grid is active or Island Mode engaged">
+      <h2>Grid Status</h2>
+      <div id="status">Status: <span id="mode" class="normal">Normal Grid</span></div>
+    </div>
+
+    <div class="card peak-card" title="Highest energy usage recorded in the previous 24 hours">
+      <h2>Previous Peak</h2>
+      <div id="prevPeak">-- kW</div>
+    </div>
+  </div>
+
+  <!-- Battery + Chart or Stations -->
+  <div class="grid-container">
+    <!-- Battery visualization (left) -->
+    <div class="card battery-visual-card">
+      <h2>Battery Visualization</h2>
+      <div class="battery-shell">
+        <div class="battery-level" id="batteryLevel"></div>
+      </div>
+      <div class="battery-info">
+        <span id="batteryPercent">0%</span> — live charge status
+      </div>
+
+      <!-- Tooltip for charging -->
+      <div class="battery-tooltip" id="batteryTooltip">
+        <div class="arrow-container">
+          <span class="arrow">↑</span>
+          <span class="arrow">↑</span>
+          <span class="arrow">↑</span>
+        </div>
+        <p class="tooltip-text">
+          Energy collected during off-peak hours is being stored for later use.
+        </p>
+      </div>
+
+      <!-- Tooltip for discharging (Island Mode) -->
+      <div class="battery-tooltip discharge-tooltip" id="batteryDischargeTooltip">
+        <div class="arrow-container">
+          <span class="arrow down">↓</span>
+          <span class="arrow down">↓</span>
+          <span class="arrow down">↓</span>
+        </div>
+        <p class="tooltip-text">
+          Outage detected - stored energy is being distributed to power local stations.
+        </p>
+      </div>
+    </div> <!-- closes .battery-visual-card -->
+
+    <!-- Chart card (right, hidden in Island Mode) -->
+    <div class="card chart-card">
+      <h2>Energy Usage</h2>
+      <canvas id="energyChart"></canvas>
+
+      <div class="chart-legend-explanation" id="chartLegend">
+      <div class="legend-item" data-dataset="0" data-desc="Total electricity demand at the moment">
+        <span class="legend-color" style="background:blue;"></span>
+        Original Load
+      </div>
+      <div class="legend-item" data-dataset="1" data-desc="Portion of electricity demand that can be shifted to off-peak times">
+        <span class="legend-color" style="background:orange;"></span>
+        Flexible Load
+      </div>
+      <div class="legend-item" data-dataset="2" data-desc="Electricity actually delivered to meet demand">
+        <span class="legend-color" style="background:green;"></span>
+        Served Load
+      </div>
+      <div class="legend-item" data-dataset="3" data-desc="Energy currently stored in the battery">
+        <span class="legend-color" style="background:#ffd600;"></span>
+        Battery SoC
+      </div>
+      <div class="legend-item" data-dataset="4" data-desc="Energy currently being supplied from the battery">
+        <span class="legend-color" style="background:#ff8c00;"></span>
+        Battery Supply
+      </div>
+    </div>
+
+    <div id="legendExplanation" class="legend-explanation initial">
+      Hover a legend to see what it means…
+    </div>
+      
+    </div>
+    
+
+    <!-- Station list card (right in Island Mode, hidden initially) -->
+    <div class="card station-list-card">
+      <h2>Current Supplied Areas</h2>
+      <!-- <div id="grid"></div> -->
+      <ul id="stationDistribution" class="station-list">
+        <!-- JS populates items here -->
+      </ul>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card control-card">
+    <button id="simulateBtn">Trigger Outage</button>
+  </div>
+</main>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- <script src="../static/js/energy.js"></script> -->
+<script src="{{ url_for('static', filename='energy.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<div id="floatingTooltip" class="floating-tooltip"></div>
+</body>
+</html>
+
+
+
+
