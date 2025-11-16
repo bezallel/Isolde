@@ -13,9 +13,11 @@
     <title>Isolde</title>
 </head>
 <body>
-    <div class="bg-layer"></div>
 
-<header>
+  <div id="bg"></div>
+
+  <div id="app">
+   <header>
     <h1>ISOLDÉ</h1>
 </header>
 
@@ -125,12 +127,15 @@
     <button id="simulateBtn">Trigger Outage</button>
   </div>
 </main>
+  </div>
+
+
 
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<!-- <script src="../static/js/energy.js"></script> -->
-<script src="{{ url_for('static', filename='energy.js') }}"></script>
+<script src="../static/js/energy.js"></script>
+<!-- <script src="{{ url_for('static', filename='energy.js') }}"></script> -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <div id="floatingTooltip" class="floating-tooltip"></div>
