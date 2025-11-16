@@ -170,7 +170,6 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     // Enter Island Mode
     simMode = true;
     document.body.classList.add('island');
-    document.querySelector('.bg-layer').classList.add('island');
     document.getElementById('mode').innerText = 'Island Mode';
     document.getElementById('mode').className = 'island';
     btn.innerText = 'End Outage';
@@ -211,7 +210,6 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     // Exit Island Mode
     simMode = false;
     document.body.classList.remove('island');
-    document.querySelector('.bg-layer').classList.remove('island');
     document.getElementById('mode').innerText = 'Normal Grid';
     document.getElementById('mode').className = 'normal';
     btn.innerText = 'Trigger Outage';
