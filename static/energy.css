@@ -1091,6 +1091,20 @@ body.island .station-list-card {
   .chart-card canvas {
     max-height: 200px !important;
   }
+
+  .footer {
+    display: flex;
+    justify-content: center; /* centers horizontally */
+    align-items: center;     /* centers vertically within padding */
+    padding: 8px;            /* balanced, no side-offset */
+    text-align: center;
+  }
+
+  .footer p {
+    font-size: clamp(0.6rem, 2.5vw, 0.8rem); /* scales with screen */
+    margin: 0;
+    line-height: 1.4;
+  }
 }
 
 
