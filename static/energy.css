@@ -8,14 +8,35 @@ html, body {
   background-image: url('images/astation.gif');
   background-size: auto 100%; /* scale height to content */
   background-position: center top; /* prevent weird centering issues */
-  background-attachment: fixed; /* keep parallax effect if you want */
+  background-attachment: scroll;
   background-repeat: no-repeat;
   color: #fff;
   min-height: 100%;  /* at least full viewport height */
-  height: auto;      /* allow body to grow with content */
+  height: 100%;      /* allow body to grow with content */
   overflow-x: hidden;
   max-width: 100%;
   transition: background 1s ease, filter 1s ease;
+}
+
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('images/astation.gif');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  z-index: -1;              /* behind everything */
+  pointer-events: none;     /* don’t block clicks */
+  transition: filter .6s ease, background-image .6s ease;
+}
+
+body.island + .bg-layer,
+.bg-layer.island {
+  background-image: url('images/amapp11.gif');
+  background-position: center;
+  filter: brightness(1.05) saturate(1.2);
 }
 
 
@@ -23,7 +44,10 @@ body.island {
   background-image: url('images/amapp11.gif');
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: cover; 
+  min-height: 100vh;
+  /* height: auto;    */
+  overflow-x: hidden;
   filter: brightness(1.05) saturate(1.2);
 }
 
