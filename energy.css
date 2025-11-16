@@ -12,7 +12,7 @@ html, body {
   background-repeat: no-repeat;
   color: #fff;
   min-height: 100%;  /* at least full viewport height */
-  height: auto;      /* allow body to grow with content */
+  height: 100%;      /* allow body to grow with content */
   overflow-x: hidden;
   max-width: 100%;
   transition: background 1s ease, filter 1s ease;
@@ -21,12 +21,11 @@ html, body {
 
 body.island {
   background-image: url('images/amapp11.gif');
-  background-size: auto 100%; /* scale height to content */
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
-  min-height: 100%;  
-  height: auto;   
+  background-size: cover; 
+  min-height: 100vh;
+  /* height: auto;    */
   overflow-x: hidden;
   filter: brightness(1.05) saturate(1.2);
 }
