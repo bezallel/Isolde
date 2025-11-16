@@ -6,10 +6,9 @@ html, body {
   margin: 0;
   font-family: 'Cinzel', serif;
   background-image: url('images/astation.gif');
-  /* background-size: auto 100%;  */
-  background-position: center top; /* prevent weird centering issues */
-  background-attachment: fixed; /* keep parallax effect if you want */
+  background-position: center;
   background-repeat: no-repeat;
+  background-size: cover;
   color: #fff;
   min-height: 100vh;  /* at least full viewport height */
   height: auto;      /* allow body to grow with content */
@@ -410,6 +409,7 @@ body.island .battery-level {
 .chart-card canvas {
     width: 100% !important;  /* stretch canvas to parent */
     height: 300px !important;
+  color: white;
 }
 
 body.island .chart-card {
