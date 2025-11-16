@@ -18,6 +18,27 @@ html, body {
   transition: background 1s ease, filter 1s ease;
 }
 
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-image: url('images/astation.gif');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  z-index: -1;              /* behind everything */
+  pointer-events: none;     /* don’t block clicks */
+  transition: filter .6s ease, background-image .6s ease;
+}
+
+body.island + .bg-layer,
+.bg-layer.island {
+  background-image: url('images/amapp11.gif');
+  background-position: center;
+  filter: brightness(1.05) saturate(1.2);
+}
+
 
 body.island {
   background-image: url('images/amapp11.gif');
