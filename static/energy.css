@@ -5,37 +5,27 @@
 html, body {
   margin: 0;
   font-family: 'Cinzel', serif;
-  background-image: url('images/astation.gif');
-  background-size: auto 100%; /* scale height to content */
-  background-position: center top; /* prevent weird centering issues */
-  background-attachment: scroll;
-  background-repeat: no-repeat;
-  color: #fff;
-  min-height: 100%;  /* at least full viewport height */
-  height: 100%;      /* allow body to grow with content */
+  height: 100%;
   overflow-x: hidden;
-  max-width: 100%;
+}
+
+
+/* background layer */
+#bg {
+  position: fixed;
+  inset: 0;           /* top:0; left:0; right:0; bottom:0 */
+  z-index: -1;        /* behind everything */
+  background-image: url('images/astation.gif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(1) saturate(1);
   transition: background 1s ease, filter 1s ease;
 }
 
-.bg-layer {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  background-image: url('images/astation.gif');
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  z-index: -1;              /* behind everything */
-  pointer-events: none;     /* don’t block clicks */
-  transition: filter .6s ease, background-image .6s ease;
-}
-
-body.island + .bg-layer,
-.bg-layer.island {
+/* island mode */
+#bg.island {
   background-image: url('images/amapp11.gif');
-  background-position: center;
   filter: brightness(1.05) saturate(1.2);
 }
 
