@@ -11,7 +11,7 @@ html, body {
   background-attachment: fixed; /* keep parallax effect if you want */
   background-repeat: no-repeat;
   color: #fff;
-  min-height: 100%;  /* at least full viewport height */
+  min-height: 100vh;  /* at least full viewport height */
   height: auto;      /* allow body to grow with content */
   overflow-x: hidden;
   max-width: 100%;
