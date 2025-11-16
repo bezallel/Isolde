@@ -490,6 +490,7 @@ body.island .chart-card {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    color: white;
     opacity: 0.7;
     transition: opacity 0.3s, font-weight 0.3s;
 }
