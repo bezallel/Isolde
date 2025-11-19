@@ -27,26 +27,23 @@ def index():
 
 @app.route('/data')
 def data():
-    # Only keep necessary columns
-    columns = ['Datetime','load_kW','shifted_load_kW','yhat','served_kW']
-    df = df_resampled[columns].copy()
+    """Main energy dataset endpoint"""
+    return df_resampled.to_json(orient='records', date_format='iso')
 
-    # Aggressive downsampling to max 500 points
-    max_points = 500
-    step = max(1, len(df) // max_points)
-    df = df.iloc[::step]
 
-    # Round numbers to 1 decimal for smaller JSON
-    for col in columns[1:]:
-        df[col] = df[col].round(1)
-
-    # Convert Datetime to ISO strings (or even "YYYY-MM-DD HH" to save bytes)
-    df['Datetime'] = pd.to_datetime(df['Datetime']).dt.strftime('%Y-%m-%d %H:%M')
-
-    # Convert to array-of-arrays with columns
-    payload = {'columns': columns, 'data': df.values.tolist()}
-    return jsonify(payload)
-
+@app.route('/stations')
+def stations():
+    expected_cols = ['county', 'station code', 'station name' , 'latitude', 'longitude', 'open year']
+    df = station_df[expected_cols].copy()
+    
+    # Ensure numeric coordinates
+    df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
+    df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
+    
+    # Drop invalid rows
+    df = df.dropna(subset=['latitude', 'longitude']).reset_index(drop=True)
+    
+    return df.to_json(orient='records')
 
 
 @app.route('/simulate')
