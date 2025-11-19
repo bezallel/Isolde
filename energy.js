@@ -4,170 +4,168 @@ let dataGlobal = [];
 let simMode = false;
 let chart;
 let batteryCap = 5; // max battery kWh
+const MAX_POINTS = 2000; // maximum points to plot (downsampling)
 
-/* ------------------ Helpers: show/hide station list (defensive) ------------------ */
+/* ------------------ Helpers: show/hide station list ------------------ */
 function hideStationList() {
-  const el = document.querySelector('.station-list-card');
-  if (!el) return;
-  el.classList.add('hidden');
-  el.style.display = 'none';
-  el.style.height = '0px';
-  el.style.padding = '0';
-  el.style.margin = '0';
-  el.style.overflow = 'hidden';
-  el.setAttribute('aria-hidden', 'true');
+const el = document.querySelector('.station-list-card');
+if (!el) return;
+el.classList.add('hidden');
+el.style.display = 'none';
+el.style.height = '0px';
+el.style.padding = '0';
+el.style.margin = '0';
+el.style.overflow = 'hidden';
+el.setAttribute('aria-hidden', 'true');
 }
 
 function showStationList() {
-  const el = document.querySelector('.station-list-card');
-  if (!el) return;
-  el.classList.remove('hidden');
-  el.style.display = '';
-  el.style.height = '';
-  el.style.padding = '';
-  el.style.margin = '';
-  el.style.overflow = '';
-  el.removeAttribute('aria-hidden');
+const el = document.querySelector('.station-list-card');
+if (!el) return;
+el.classList.remove('hidden');
+el.style.display = '';
+el.style.height = '';
+el.style.padding = '';
+el.style.margin = '';
+el.style.overflow = '';
+el.removeAttribute('aria-hidden');
 }
 
-// -------------------------
-// FETCH ENERGY DATA
-// -------------------------
-
-
+/* ------------------ Fetch energy data ------------------ */
 async function fetchData() {
 const response = await fetch('/data');
 const payload = await response.json();
 
-// Convert array-of-arrays to objects for easier chart access
-const cols = payload.columns;
-dataGlobal = payload.data.map(row => {
-const obj = {};
-for (let i = 0; i < cols.length; i++) {
-obj[cols[i]] = row[i];
-}
-return obj;
-});
+// Downsample to MAX_POINTS if needed
+const step = Math.ceil(payload.data.length / MAX_POINTS);
+dataGlobal = payload.data.filter((_, i) => i % step === 0);
+
+// Keep columns mapping
+dataGlobal.columns = payload.columns;
 
 updatePrevPeak(dataGlobal);
 initChart(dataGlobal);
 }
 
+/* ------------------ Compute previous peak ------------------ */
+function updatePrevPeak(data) {
+const loadIdx = data.columns.indexOf('load_kW');
+const peak = Math.max(...data.map(row => row[loadIdx] || 0));
+document.getElementById('prevPeak').innerText = `${peak.toFixed(2)} kW`;
+}
 
-// -------------------------
-// ENERGY CHART
-// -------------------------
+/* ------------------ Initialize Chart ------------------ */
 function initChart(data) {
-  const ctx = document.getElementById('energyChart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [
-        { label: 'Original Load', data: [], borderColor: 'blue', fill: false },
-        { label: 'Flexible Load', data: [], borderColor: 'orange', fill: false },
-        { label: 'Served Load', data: [], borderColor: 'green', fill: false },
-        { label: 'Battery SoC', data: [], borderColor: '#ffd600', fill: true, backgroundColor: 'rgba(255,214,0,0.2)', hidden: false },
-        { label: 'Battery Supply', data: [], borderColor: '#ff8c00', borderDash: [5,5], fill: false, hidden: true }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 0 },
-      scales: {
-        y: { beginAtZero: true, ticks: { font: { size: 9 } } },
-        x: { ticks: { font: { size: 9 } } }
-      },
-      plugins: {
-        legend: { position: 'top', labels: { font: { size: 10 } } },
-        tooltip: {
-          enabled: true, mode: 'nearest', intersect: false,
-          backgroundColor: 'rgba(0,0,0,0.85)', titleColor: '#fff', bodyColor: '#f0f0f0',
-          titleFont: { size: 10 }, bodyFont: { size: 10 }
-        }
-      },
-      hover: { mode: 'nearest', intersect: false }
-    }
-  });
+const ctx = document.getElementById('energyChart').getContext('2d');
+chart = new Chart(ctx, {
+type: 'line',
+data: {
+labels: [],
+datasets: [
+{ label: 'Original Load', data: [], borderColor: 'blue', fill: false },
+{ label: 'Flexible Load', data: [], borderColor: 'orange', fill: false },
+{ label: 'Served Load', data: [], borderColor: 'green', fill: false },
+{ label: 'Battery SoC', data: [], borderColor: '#ffd600', fill: true, backgroundColor: 'rgba(255,214,0,0.2)', hidden: false },
+{ label: 'Battery Supply', data: [], borderColor: '#ff8c00', borderDash: [5,5], fill: false, hidden: true }
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+animation: { duration: 0 },
+scales: {
+y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+x: { ticks: { font: { size: 9 } } }
+},
+plugins: {
+legend: { position: 'top', labels: { font: { size: 10 } } },
+tooltip: {
+enabled: true, mode: 'nearest', intersect: false,
+backgroundColor: 'rgba(0,0,0,0.85)', titleColor: '#fff', bodyColor: '#f0f0f0',
+titleFont: { size: 10 }, bodyFont: { size: 10 }
+}
+},
+hover: { mode: 'nearest', intersect: false },
+parsing: false, // disables Chart.js internal parsing for faster rendering
+normalized: true
+}
+});
 
-  // ensure the station list is hidden at chart init (defensive)
-  hideStationList();
-
-  animateChart(data);
+hideStationList();
+animateChart(data);
 }
 
-// -------------------------
-// ANIMATE ENERGY CHART (VERY SLOW DISCHARGE WITH TOGGLE)
-// -------------------------
-
+/* ------------------ Animate Chart ------------------ */
 function animateChart(data) {
-  let i = 0;
-  let batterySOC = 0;
-  let chartSOC = 0;
-  const batteryMax = batteryCap;
-  const timestep_hours = 1.0;
+let i = 0;
+let batterySOC = 0;
+let chartSOC = 0;
+const batteryMax = batteryCap;
+const timestep_hours = 1.0;
 
-  window.latestBatterySupply = 0;
-  window.latestBatterySOC = batterySOC;
+window.latestBatterySupply = 0;
+window.latestBatterySOC = batterySOC;
 
-  chart.data.datasets[3].hidden = false;
+chart.data.datasets[3].hidden = false;
+chart.data.datasets[4].hidden = true;
+
+const col = data.columns;
+const dtIdx = col.indexOf('Datetime');
+const loadIdx = col.indexOf('load_kW');
+const shiftedIdx = col.indexOf('shifted_load_kW');
+const yhatIdx = col.indexOf('yhat');
+const servedIdx = col.indexOf('served_kW');
+
+const interval = setInterval(() => {
+if (i >= data.length) return clearInterval(interval);
+
+```
+const row = data[i];
+chart.data.labels.push(row[dtIdx]);
+chart.data.datasets[0].data.push(row[loadIdx] || row[yhatIdx] || 0);
+chart.data.datasets[1].data.push(row[shiftedIdx] || row[yhatIdx] || 0);
+chart.data.datasets[2].data.push(row[yhatIdx] || row[loadIdx] || 0);
+
+if (!simMode) {
+  batterySOC = Math.min(batteryMax, batterySOC + 0.02);
+  chartSOC += (batterySOC - chartSOC) * 0.1;
+
+  chart.data.datasets[2].data.push(row[servedIdx] || 0);
+  chart.data.datasets[3].data.push(chartSOC);
+  chart.data.datasets[4].data.push(0);
   chart.data.datasets[4].hidden = true;
+  window.latestBatterySupply = 0;
+} else {
+  const demand_kWh = (row[servedIdx] || 0) * timestep_hours;
+  const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
+  batterySOC = Math.max(0, batterySOC - depletion_kWh);
 
-  // Get column indices once
-  const dtIdx = data[0].findIndex((_, i) => i === 0 ? true : false); // if data[0] is array-of-arrays, better: dtIdx = 0
-  const loadIdx = data[0].findIndex((_, i) => i === 1 ? true : false); // adjust to actual order
-  const shiftedIdx = data[0].findIndex((_, i) => i === 2 ? true : false);
-  const yhatIdx = data[0].findIndex((_, i) => i === 3 ? true : false);
-  const servedIdx = data[0].findIndex((_, i) => i === 4 ? true : false);
+  const batterySupply_kW = depletion_kWh / Math.max(timestep_hours, 1e-9);
 
-  const interval = setInterval(() => {
-    if (i >= data.length) return clearInterval(interval);
+  chart.data.datasets[3].data.push(batterySOC);
+  chart.data.datasets[4].data.push(batterySupply_kW);
+  chart.data.datasets[4].hidden = false;
+  chart.data.datasets[2].data.push(0);
 
-    const row = data[i];
-
-    chart.data.labels.push(row[dtIdx]);
-    chart.data.datasets[0].data.push(row[loadIdx] || row[yhatIdx] || 0);
-    chart.data.datasets[1].data.push(row[shiftedIdx] || row[yhatIdx] || 0);
-    chart.data.datasets[2].data.push(row[yhatIdx] || row[loadIdx] || 0);
-
-    if (!simMode) {
-      batterySOC = Math.min(batteryMax, batterySOC + 0.02);
-      chartSOC += (batterySOC - chartSOC) * 0.1;
-
-      chart.data.datasets[2].data.push(row[servedIdx] || 0);
-      chart.data.datasets[3].data.push(chartSOC);
-      chart.data.datasets[4].data.push(0);
-      chart.data.datasets[4].hidden = true;
-      window.latestBatterySupply = 0;
-    } else {
-      const demand_kWh = (row[servedIdx] || 0) * timestep_hours;
-      const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
-      batterySOC = Math.max(0, batterySOC - depletion_kWh);
-
-      const batterySupply_kW = depletion_kWh / Math.max(timestep_hours, 1e-9);
-
-      chart.data.datasets[3].data.push(batterySOC);
-      chart.data.datasets[4].data.push(batterySupply_kW);
-      chart.data.datasets[4].hidden = false;
-      chart.data.datasets[2].data.push(0);
-
-      window.latestBatterySupply = batterySupply_kW;
-    }
-
-    window.latestBatterySOC = batterySOC;
-    document.getElementById('batterySOC').innerText = `${batterySOC.toFixed(3)} kWh`;
-    updateBatteryVisual(batterySOC);
-
-    const currentPeak = Math.max(...chart.data.datasets[0].data);
-    document.getElementById('prevPeak').innerText = `${currentPeak.toFixed(2)} kW`;
-
-    updateStationDistribution(window.latestBatterySupply, window.latestBatterySOC);
-
-    chart.update();
-    i++;
-  }, 300);
+  window.latestBatterySupply = batterySupply_kW;
 }
+
+window.latestBatterySOC = batterySOC;
+document.getElementById('batterySOC').innerText = `${batterySOC.toFixed(3)} kWh`;
+updateBatteryVisual(batterySOC);
+
+const currentPeak = Math.max(...chart.data.datasets[0].data);
+document.getElementById('prevPeak').innerText = `${currentPeak.toFixed(2)} kW`;
+
+updateStationDistribution(window.latestBatterySupply, window.latestBatterySOC);
+
+chart.update();
+i++;
+```
+
+}, 50); // faster refresh, fewer points due to downsampling
+}
+
 
 
 
