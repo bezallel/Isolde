@@ -33,18 +33,26 @@ function showStationList() {
 // -------------------------
 // FETCH ENERGY DATA
 // -------------------------
+
+
 async function fetchData() {
-  const response = await fetch('/data');
-  dataGlobal = await response.json();
-  updatePrevPeak(dataGlobal);
-  initChart(dataGlobal);
+const response = await fetch('/data');
+const payload = await response.json();
+
+// Convert array-of-arrays to objects for easier chart access
+const cols = payload.columns;
+dataGlobal = payload.data.map(row => {
+const obj = {};
+for (let i = 0; i < cols.length; i++) {
+obj[cols[i]] = row[i];
+}
+return obj;
+});
+
+updatePrevPeak(dataGlobal);
+initChart(dataGlobal);
 }
 
-/* Compute and display previous peak usage */
-function updatePrevPeak(data) {
-  const peak = Math.max(...data.map(d => d.load_kW));
-  document.getElementById('prevPeak').innerText = `${peak.toFixed(2)} kW`;
-}
 
 // -------------------------
 // ENERGY CHART
@@ -92,6 +100,7 @@ function initChart(data) {
 // -------------------------
 // ANIMATE ENERGY CHART (VERY SLOW DISCHARGE WITH TOGGLE)
 // -------------------------
+
 function animateChart(data) {
   let i = 0;
   let batterySOC = 0;
@@ -105,29 +114,34 @@ function animateChart(data) {
   chart.data.datasets[3].hidden = false;
   chart.data.datasets[4].hidden = true;
 
+  // Get column indices once
+  const dtIdx = data[0].findIndex((_, i) => i === 0 ? true : false); // if data[0] is array-of-arrays, better: dtIdx = 0
+  const loadIdx = data[0].findIndex((_, i) => i === 1 ? true : false); // adjust to actual order
+  const shiftedIdx = data[0].findIndex((_, i) => i === 2 ? true : false);
+  const yhatIdx = data[0].findIndex((_, i) => i === 3 ? true : false);
+  const servedIdx = data[0].findIndex((_, i) => i === 4 ? true : false);
+
   const interval = setInterval(() => {
     if (i >= data.length) return clearInterval(interval);
-    const point = data[i];
 
-    chart.data.labels.push(point.Datetime);
-    chart.data.datasets[0].data.push(point.load_kW || point.yhat || 0);
-    chart.data.datasets[1].data.push(point.shifted_load_kW || point.trend || 0);
-    chart.data.datasets[2].data.push(point.yhat || point.trend || point.load_kW || 0);
+    const row = data[i];
+
+    chart.data.labels.push(row[dtIdx]);
+    chart.data.datasets[0].data.push(row[loadIdx] || row[yhatIdx] || 0);
+    chart.data.datasets[1].data.push(row[shiftedIdx] || row[yhatIdx] || 0);
+    chart.data.datasets[2].data.push(row[yhatIdx] || row[loadIdx] || 0);
 
     if (!simMode) {
-      // Normal Grid / Charging
       batterySOC = Math.min(batteryMax, batterySOC + 0.02);
-      const smoothing = 0.1;
-      chartSOC += (batterySOC - chartSOC) * smoothing;
+      chartSOC += (batterySOC - chartSOC) * 0.1;
 
-      chart.data.datasets[2].data.push(point.served_kW || 0);
+      chart.data.datasets[2].data.push(row[servedIdx] || 0);
       chart.data.datasets[3].data.push(chartSOC);
       chart.data.datasets[4].data.push(0);
       chart.data.datasets[4].hidden = true;
       window.latestBatterySupply = 0;
     } else {
-      // Island Mode / Discharging
-      const demand_kWh = (Number(point.served_kW) || 0) * timestep_hours;
+      const demand_kWh = (row[servedIdx] || 0) * timestep_hours;
       const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
       batterySOC = Math.max(0, batterySOC - depletion_kWh);
 
@@ -154,6 +168,7 @@ function animateChart(data) {
     i++;
   }, 300);
 }
+
 
 
 // -------------------------
