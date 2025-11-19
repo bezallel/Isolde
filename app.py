@@ -27,23 +27,23 @@ def index():
 
 @app.route('/data')
 def data():
-    """Main energy dataset endpoint"""
-    return df_resampled.to_json(orient='records', date_format='iso')
+    """Main energy dataset endpoint, downsampled and optionally gzipped"""
+    columns = ['Datetime','load_kW','shifted_load_kW','yhat','served_kW']
+    df = df_resampled[columns].copy()
 
+    # Downsample to e.g., 2000 points max
+    step = max(1, len(df) // 2000)
+    df = df.iloc[::step]
 
-@app.route('/stations')
-def stations():
-    expected_cols = ['county', 'station code', 'station name' , 'latitude', 'longitude', 'open year']
-    df = station_df[expected_cols].copy()
-    
-    # Ensure numeric coordinates
-    df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
-    df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
-    
-    # Drop invalid rows
-    df = df.dropna(subset=['latitude', 'longitude']).reset_index(drop=True)
-    
-    return df.to_json(orient='records')
+    # Round numeric columns for smaller JSON
+    for col in df.columns:
+        if col != 'Datetime':
+            df[col] = df[col].round(2)
+
+    # Convert to array-of-arrays for the front-end
+    payload = {'columns': columns, 'data': df.values.tolist()}
+
+    return jsonify(payload)
 
 
 @app.route('/simulate')
