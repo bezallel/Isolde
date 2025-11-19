@@ -27,22 +27,20 @@ def index():
 
 @app.route('/data')
 def data():
-    """Main energy dataset endpoint, downsampled and optionally gzipped"""
+    # Only keep necessary columns
     columns = ['Datetime','load_kW','shifted_load_kW','yhat','served_kW']
     df = df_resampled[columns].copy()
 
-    # Downsample to e.g., 2000 points max
+    # Downsample to max 2000 points
     step = max(1, len(df) // 2000)
     df = df.iloc[::step]
 
-    # Round numeric columns for smaller JSON
-    for col in df.columns:
-        if col != 'Datetime':
-            df[col] = df[col].round(2)
+    # Round numbers for smaller JSON
+    for col in columns[1:]:
+        df[col] = df[col].round(2)
 
-    # Convert to array-of-arrays for the front-end
+    # Convert to array-of-arrays with columns
     payload = {'columns': columns, 'data': df.values.tolist()}
-
     return jsonify(payload)
 
 
