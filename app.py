@@ -31,17 +31,22 @@ def data():
     columns = ['Datetime','load_kW','shifted_load_kW','yhat','served_kW']
     df = df_resampled[columns].copy()
 
-    # Downsample to max 2000 points
-    step = max(1, len(df) // 2000)
+    # Aggressive downsampling to max 500 points
+    max_points = 500
+    step = max(1, len(df) // max_points)
     df = df.iloc[::step]
 
-    # Round numbers for smaller JSON
+    # Round numbers to 1 decimal for smaller JSON
     for col in columns[1:]:
-        df[col] = df[col].round(2)
+        df[col] = df[col].round(1)
+
+    # Convert Datetime to ISO strings (or even "YYYY-MM-DD HH" to save bytes)
+    df['Datetime'] = pd.to_datetime(df['Datetime']).dt.strftime('%Y-%m-%d %H:%M')
 
     # Convert to array-of-arrays with columns
     payload = {'columns': columns, 'data': df.values.tolist()}
     return jsonify(payload)
+
 
 
 @app.route('/simulate')
