@@ -92,9 +92,6 @@ function initChart(data) {
 // -------------------------
 // ANIMATE ENERGY CHART (VERY SLOW DISCHARGE WITH TOGGLE)
 // -------------------------
-// -------------------------
-// ANIMATE ENERGY CHART (GLITCH-FREE)
-// -------------------------
 function animateChart(data) {
   let i = 0;
   let batterySOC = 0;
@@ -108,62 +105,54 @@ function animateChart(data) {
   chart.data.datasets[3].hidden = false;
   chart.data.datasets[4].hidden = true;
 
-  // ------------------------- Preload Island Mode wallpaper -------------------------
-  const islandWallpaper = new Image();
-  islandWallpaper.src = '/static/island_wallpaper.png';
-  islandWallpaper.onload = () => {
-    // Apply wallpaper immediately
-    if (simMode) document.body.style.backgroundImage = `url(${islandWallpaper.src})`;
+  const interval = setInterval(() => {
+    if (i >= data.length) return clearInterval(interval);
+    const point = data[i];
 
-    // Start chart animation after wallpaper is ready
-    const interval = setInterval(() => {
-      if (i >= data.length) return clearInterval(interval);
-      const point = data[i];
+    chart.data.labels.push(point.Datetime);
+    chart.data.datasets[0].data.push(point.load_kW || point.yhat || 0);
+    chart.data.datasets[1].data.push(point.shifted_load_kW || point.trend || 0);
+    chart.data.datasets[2].data.push(point.yhat || point.trend || point.load_kW || 0);
 
-      // Update battery SOC
-      if (!simMode) {
-        batterySOC = Math.min(batteryMax, batterySOC + 0.02);
-        const smoothing = 0.1;
-        chartSOC += (batterySOC - chartSOC) * smoothing;
-        window.latestBatterySupply = 0;
-      } else {
-        const demand_kWh = (Number(point.served_kW) || 0) * timestep_hours;
-        const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
-        batterySOC = Math.max(0, batterySOC - depletion_kWh);
-        window.latestBatterySupply = depletion_kWh / Math.max(timestep_hours, 1e-9);
-        chartSOC = batterySOC; // optional smoothing can be applied
-      }
+    if (!simMode) {
+      // Normal Grid / Charging
+      batterySOC = Math.min(batteryMax, batterySOC + 0.02);
+      const smoothing = 0.1;
+      chartSOC += (batterySOC - chartSOC) * smoothing;
 
-      window.latestBatterySOC = batterySOC;
-
-      // ----------------- Single push per dataset -----------------
-      chart.data.labels.push(point.Datetime);
-      chart.data.datasets[0].data.push(point.load_kW || 0);
-      chart.data.datasets[1].data.push(point.shifted_load_kW || 0);
-      chart.data.datasets[2].data.push(simMode ? 0 : (point.served_kW || 0));
+      chart.data.datasets[2].data.push(point.served_kW || 0);
       chart.data.datasets[3].data.push(chartSOC);
-      chart.data.datasets[4].data.push(simMode ? window.latestBatterySupply : 0);
+      chart.data.datasets[4].data.push(0);
+      chart.data.datasets[4].hidden = true;
+      window.latestBatterySupply = 0;
+    } else {
+      // Island Mode / Discharging
+      const demand_kWh = (Number(point.served_kW) || 0) * timestep_hours;
+      const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
+      batterySOC = Math.max(0, batterySOC - depletion_kWh);
 
-      // Keep datasets bounded
-      const MAX_POINTS = 500;
-      chart.data.labels.length > MAX_POINTS && chart.data.labels.shift();
-      chart.data.datasets.forEach(ds => ds.data.length > MAX_POINTS && ds.data.shift());
+      const batterySupply_kW = depletion_kWh / Math.max(timestep_hours, 1e-9);
 
-      // ----------------- Throttle DOM updates -----------------
-      if (i % 2 === 0) {  // update every 2 points (600ms)
-        document.getElementById('batterySOC').innerText = `${batterySOC.toFixed(3)} kWh`;
-        updateBatteryVisual(batterySOC);
+      chart.data.datasets[3].data.push(batterySOC);
+      chart.data.datasets[4].data.push(batterySupply_kW);
+      chart.data.datasets[4].hidden = false;
+      chart.data.datasets[2].data.push(0);
 
-        const currentPeak = Math.max(...chart.data.datasets[0].data);
-        document.getElementById('prevPeak').innerText = `${currentPeak.toFixed(2)} kW`;
+      window.latestBatterySupply = batterySupply_kW;
+    }
 
-        updateStationDistribution(window.latestBatterySupply, window.latestBatterySOC);
-      }
+    window.latestBatterySOC = batterySOC;
+    document.getElementById('batterySOC').innerText = `${batterySOC.toFixed(3)} kWh`;
+    updateBatteryVisual(batterySOC);
 
-      chart.update();
-      i++;
-    }, 300);
-  };
+    const currentPeak = Math.max(...chart.data.datasets[0].data);
+    document.getElementById('prevPeak').innerText = `${currentPeak.toFixed(2)} kW`;
+
+    updateStationDistribution(window.latestBatterySupply, window.latestBatterySOC);
+
+    chart.update();
+    i++;
+  }, 300);
 }
 
 
