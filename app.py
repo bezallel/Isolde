@@ -51,35 +51,52 @@ def simulate():
     storm_start = request.args.get('stormStart', '02:00')
     storm_end = request.args.get('stormEnd', '08:00')
     battery_cap = float(request.args.get('batteryCap', 5))
-    max_points = 500  # keep payload small
 
     df = df_resampled.copy()
     soc = battery_cap
     served = []
     soc_track = []
+    district_supplies = []
 
-    for _, row in df.iterrows():
+    n_stations = len(station_df) or 5
+
+    # Very slow fixed discharge per timestep (kWh)
+    slow_discharge = 0.01
+
+    for i, row in df.iterrows():
         t = pd.Timestamp(row['Datetime'])
         time_str = t.strftime('%H:%M')
 
+        per_station = [0] * n_stations
+        supply = 0
+
         if storm_start <= time_str <= storm_end and soc > 0:
-            supply = min(0.01, soc)
+            supply = min(slow_discharge, soc)
+            per_station = [supply / n_stations] * n_stations
             soc -= supply
         else:
-            supply = 0
+            # Slowly recharge
             soc = min(battery_cap, soc + 0.005)
 
         served.append(supply)
         soc_track.append(soc)
+        district_supplies.append(per_station)
 
+    # Add served load and SOC columns
     df['served_kW'] = served
     df['soc_kWh'] = soc_track
 
-    # Keep only the essential columns
-    essential_cols = ['Datetime', 'load_kW', 'shifted_load_kW', 'served_kW', 'soc_kWh']
-    df_small = df[essential_cols].tail(max_points)
+    # Build all station columns at once
+    station_cols = {
+        f'station_{idx+1}_kW': [x[idx] for x in district_supplies]
+        for idx in range(n_stations)
+    }
+    station_df_new = pd.DataFrame(station_cols)
 
-    return df_small.to_json(orient='records', date_format='iso')
+    # Concatenate to main df
+    df = pd.concat([df, station_df_new], axis=1)
+
+    return df.to_json(orient='records', date_format='iso')
 
 
 
