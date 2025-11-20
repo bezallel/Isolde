@@ -27,9 +27,18 @@ def index():
 
 @app.route('/data')
 def data():
-    """Main energy dataset endpoint"""
-    return df_resampled.to_json(orient='records', date_format='iso')
+"""Serve a downsampled version of the main energy dataset"""
+df_small = df_resampled.copy()
 
+```
+# Ensure Datetime is a proper timestamp
+df_small['Datetime'] = pd.to_datetime(df_small['Datetime'])
+
+# Resample to 15-minute intervals (average values)
+df_small = df_small.set_index('Datetime').resample('15T').mean().reset_index()
+
+return df_small.to_json(orient='records', date_format='iso')
+```
 
 @app.route('/stations')
 def stations():
