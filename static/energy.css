@@ -837,6 +837,10 @@ body.island .station-list-card {
     max-height: 200px !important;
   }
 
+    .control-card {
+    margin-bottom: 2rem;
+}
+
   .footer {
     display: flex;
     justify-content: center; /* centers horizontally */
