@@ -37,6 +37,21 @@ def data():
     df_small = df_resampled[essential_cols].tail(500)
     
     return df_small.to_json(orient='records', date_format='iso')
+    
+
+@app.route('/stations')
+def stations():
+    expected_cols = ['county', 'station code', 'station name' , 'latitude', 'longitude', 'open year']
+    df = station_df[expected_cols].copy()
+    
+    # Ensure numeric coordinates
+    df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
+    df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
+    
+    # Drop invalid rows
+    df = df.dropna(subset=['latitude', 'longitude']).reset_index(drop=True)
+    
+    return df.to_json(orient='records')
 
 
 
