@@ -105,17 +105,26 @@ function animateChart(data) {
   chart.data.datasets[3].hidden = false;
   chart.data.datasets[4].hidden = true;
 
-  const interval = setInterval(() => {
-    if (i >= data.length) return clearInterval(interval);
+  // Clear any previous animation still running before starting a new one
+  if (window._energyAnimInterval) {
+    clearInterval(window._energyAnimInterval);
+  }
+
+  const tickSpeed = simMode ? 100 : 300; // faster ticks during outage sim
+
+  window._energyAnimInterval = setInterval(() => {
+    if (i >= data.length) {
+      clearInterval(window._energyAnimInterval);
+      window._energyAnimInterval = null;
+      return;
+    }
     const point = data[i];
 
     chart.data.labels.push(point.Datetime);
     chart.data.datasets[0].data.push(point.load_kW || point.yhat || 0);
     chart.data.datasets[1].data.push(point.shifted_load_kW || point.trend || 0);
-    chart.data.datasets[2].data.push(point.yhat || point.trend || point.load_kW || 0);
 
     if (!simMode) {
-      // Normal Grid / Charging
       batterySOC = Math.min(batteryMax, batterySOC + 0.02);
       const smoothing = 0.1;
       chartSOC += (batterySOC - chartSOC) * smoothing;
@@ -126,7 +135,6 @@ function animateChart(data) {
       chart.data.datasets[4].hidden = true;
       window.latestBatterySupply = 0;
     } else {
-      // Island Mode / Discharging
       const demand_kWh = (Number(point.served_kW) || 0) * timestep_hours;
       const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
       batterySOC = Math.max(0, batterySOC - depletion_kWh);
@@ -152,9 +160,8 @@ function animateChart(data) {
 
     chart.update();
     i++;
-  }, 300);
+  }, tickSpeed);
 }
-
 
 // -------------------------
 // SIMULATE ISLAND MODE
@@ -162,9 +169,6 @@ function animateChart(data) {
 document.getElementById('simulateBtn').addEventListener('click', async () => {
   const btn = document.getElementById('simulateBtn');
   const batteryInfoEl = document.querySelector('.battery-info');
-
-  // make sure stationCard reference exists
-  const stationCard = document.querySelector('.station-list-card');
 
   if (!simMode) {
     // Enter Island Mode
@@ -189,11 +193,20 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     const response = await fetch(`/simulate?stormStart=${stormStart}&stormEnd=${stormEnd}&batteryCap=${batteryCap}&criticalLoad=40`);
     const simData = await response.json();
 
+    // Isolate just the storm window so the outage effect shows immediately
+    // instead of animating through the whole dataset first
+    const stormWindow = simData.filter(d => {
+      const t = new Date(d.Datetime).toTimeString().slice(0, 5); // "HH:MM"
+      return t >= stormStart && t <= stormEnd;
+    });
+
+    const animData = stormWindow.length > 0 ? stormWindow : simData;
+
     chart.data.labels = [];
     chart.data.datasets.forEach(ds => ds.data = []);
     chart.update();
 
-    updatePrevPeak(simData);
+    updatePrevPeak(animData);
 
     let oldMsg = document.getElementById('simMessage');
     if (oldMsg) oldMsg.remove();
@@ -205,10 +218,16 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     msg.style.marginBottom = '0.5rem';
     document.querySelector('.chart-card').prepend(msg);
 
-    animateChart(simData);
+    animateChart(animData);
   } else {
     // Exit Island Mode
     simMode = false;
+
+    if (window._energyAnimInterval) {
+      clearInterval(window._energyAnimInterval);
+      window._energyAnimInterval = null;
+    }
+
     document.body.classList.remove('island');
     document.getElementById('mode').innerText = 'Normal Grid';
     document.getElementById('mode').className = 'normal';
@@ -216,7 +235,7 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
 
     setTimeout(() => {
       hideStationList();
-    }, 400); // smaller delay is fine
+    }, 400);
 
     chart.data.datasets.forEach(ds => ds.data = []);
     chart.data.labels = [];
@@ -226,6 +245,9 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
 
     const oldMsg = document.getElementById('simMessage');
     if (oldMsg) oldMsg.remove();
+
+    // Reset display back to normal-grid data so the chart isn't left empty
+    fetchData();
   }
 });
 // -------------------------
