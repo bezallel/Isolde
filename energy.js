@@ -1,4 +1,4 @@
-// energy.js (updated) ----------------------------------------------------
+// energy.js (fixed, full file) --------------------------------------------
 
 let dataGlobal = [];
 let simMode = false;
@@ -108,6 +108,7 @@ function animateChart(data) {
   // Clear any previous animation still running before starting a new one
   if (window._energyAnimInterval) {
     clearInterval(window._energyAnimInterval);
+    window._energyAnimInterval = null;
   }
 
   const tickSpeed = simMode ? 100 : 300; // faster ticks during outage sim
@@ -125,6 +126,7 @@ function animateChart(data) {
     chart.data.datasets[1].data.push(point.shifted_load_kW || point.trend || 0);
 
     if (!simMode) {
+      // Normal Grid / Charging
       batterySOC = Math.min(batteryMax, batterySOC + 0.02);
       const smoothing = 0.1;
       chartSOC += (batterySOC - chartSOC) * smoothing;
@@ -135,6 +137,7 @@ function animateChart(data) {
       chart.data.datasets[4].hidden = true;
       window.latestBatterySupply = 0;
     } else {
+      // Island Mode / Discharging
       const demand_kWh = (Number(point.served_kW) || 0) * timestep_hours;
       const depletion_kWh = Math.min(batterySOC, demand_kWh * 0.05);
       batterySOC = Math.max(0, batterySOC - depletion_kWh);
@@ -194,9 +197,10 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     const simData = await response.json();
 
     // Isolate just the storm window so the outage effect shows immediately
-    // instead of animating through the whole dataset first
+    // instead of animating through the whole dataset first.
+    // Uses a direct string slice on the ISO timestamp (no Date/timezone conversion).
     const stormWindow = simData.filter(d => {
-      const t = new Date(d.Datetime).toTimeString().slice(0, 5); // "HH:MM"
+      const t = String(d.Datetime).slice(11, 16); // "YYYY-MM-DDTHH:MM..." -> "HH:MM"
       return t >= stormStart && t <= stormEnd;
     });
 
@@ -235,7 +239,7 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
 
     setTimeout(() => {
       hideStationList();
-    }, 400);
+    }, 400); // smaller delay is fine
 
     chart.data.datasets.forEach(ds => ds.data = []);
     chart.data.labels = [];
@@ -246,10 +250,11 @@ document.getElementById('simulateBtn').addEventListener('click', async () => {
     const oldMsg = document.getElementById('simMessage');
     if (oldMsg) oldMsg.remove();
 
-    // Reset display back to normal-grid data so the chart isn't left empty
+    // Reload normal-grid data so the chart isn't left empty after exiting
     fetchData();
   }
 });
+
 // -------------------------
 // BATTERY VISUALIZATION (with tooltips)
 // -------------------------
@@ -302,7 +307,6 @@ function updateBatteryVisual(batterySOC) {
     }
   }
 }
-
 
 // -------------------------
 // STATION LIST
@@ -402,29 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStations();
 });
 
-
-
-
-
-// const legendTooltip = document.getElementById('legendTooltip');
-// document.querySelectorAll('#chartLegend .legend-item').forEach(item => {
-//   item.addEventListener('mouseenter', e => {
-//     const desc = e.currentTarget.dataset.desc;
-//     legendTooltip.innerText = desc;
-//     const rect = e.currentTarget.getBoundingClientRect();
-//     legendTooltip.style.top = rect.bottom + 6 + 'px';
-//     legendTooltip.style.left = rect.left + 'px';
-//     legendTooltip.style.opacity = 1;
-//     legendTooltip.style.transform = 'translateY(0)';
-//   });
-//   item.addEventListener('mouseleave', () => {
-//     legendTooltip.style.opacity = 0;
-//     legendTooltip.style.transform = 'translateY(-4px)';
-//   });
-// });
-
-
-
 const legendExplanation = document.getElementById('legendExplanation');
 const legendItems = document.querySelectorAll('#chartLegend .legend-item');
 
@@ -440,7 +421,6 @@ legendItems.forEach(item => {
   });
 });
 
-
 // Optional: integrate with chart animation to show the active dataset dynamically
 function updateLegendExplanation() {
   const datasets = chart.data.datasets;
@@ -453,4 +433,3 @@ function updateLegendExplanation() {
   });
   legendExplanation.innerText = activeDesc || 'Hover a legend to see what it means…';
 }
-
