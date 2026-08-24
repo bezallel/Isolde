@@ -314,6 +314,17 @@ function updateBatteryVisual(batterySOC) {
 let stations = [];
 let displayedStations = [];
 
+// Deterministic pseudo-random scatter so markers don't jump between renders
+function seededPosition(idx) {
+  const seedA = (idx * 9301 + 49297) % 233280;
+  const seedB = (idx * 4321 + 12835) % 96733;
+  const rndA = seedA / 233280;
+  const rndB = seedB / 96733;
+  const top = 18 + rndA * 62;   // keep within 18%-80% of viewport height
+  const left = 8 + rndB * 84;   // keep within 8%-92% of viewport width
+  return { top, left };
+}
+
 async function loadStations() {
   try {
     const response = await fetch('/stations');
@@ -323,14 +334,44 @@ async function loadStations() {
       idx,
       name: (s['station name'] || s['station_name'] || `Station ${idx+1}`).toLowerCase(),
       allocated_kW: 0,
-      _el: null, _amtEl: null, _fillEl: null, _pctEl: null
+      pos: seededPosition(idx),
+      _el: null, _amtEl: null, _fillEl: null, _pctEl: null,
+      _markerEl: null, _markerLabelEl: null
     }));
 
     renderStationList();
+    renderStationMarkers();
     // ensure hidden after stations render
     hideStationList();
   } catch (err) {
     console.error('Failed to load stations:', err);
+  }
+}
+
+function renderStationMarkers() {
+  const overlay = document.getElementById('cityMapOverlay');
+  if (!overlay) return;
+  overlay.innerHTML = '';
+
+  for (const st of displayedStations) {
+    const marker = document.createElement('div');
+    marker.className = 'station-marker';
+    marker.style.top = `${st.pos.top}%`;
+    marker.style.left = `${st.pos.left}%`;
+
+    const diamond = document.createElement('div');
+    diamond.className = 'marker-diamond';
+
+    const label = document.createElement('div');
+    label.className = 'station-marker-label';
+    label.innerText = `${st.name} — 0%`;
+
+    marker.appendChild(diamond);
+    marker.appendChild(label);
+    overlay.appendChild(marker);
+
+    st._markerEl = marker;
+    st._markerLabelEl = label;
   }
 }
 
@@ -397,6 +438,15 @@ function refreshStationElement(st, totalSupply) {
   if (st._pctEl) st._pctEl.innerText = `${pct.toFixed(0)}%`;
   if (allocated > 0.05) st._el.classList.add('supplying');
   else st._el.classList.remove('supplying');
+
+  // Sync the city-map marker to the same powered/unpowered state
+  if (st._markerEl) {
+    if (allocated > 0.05) st._markerEl.classList.add('active');
+    else st._markerEl.classList.remove('active');
+  }
+  if (st._markerLabelEl) {
+    st._markerLabelEl.innerText = `${st.name} — ${pct.toFixed(0)}%`;
+  }
 }
 
 /* ------------------------- INITIALIZE ------------------------- */
