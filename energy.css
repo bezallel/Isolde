@@ -1393,3 +1393,98 @@ body.island .station-list-card {
     margin-left: 11%;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* ---------------- City Map Station Markers ---------------- */
+.city-map-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+
+body.island .city-map-overlay {
+  opacity: 1;
+}
+
+.station-marker {
+  position: absolute;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.marker-diamond {
+  width: 14px;
+  height: 14px;
+  margin: 0 auto;
+  background: linear-gradient(145deg, #fff6c8, #ffd600);
+  transform: rotate(45deg);
+  border-radius: 3px;
+  opacity: 0.3;
+  box-shadow: 0 0 6px rgba(255,214,0,0.35);
+  transition: opacity 0.4s ease, box-shadow 0.4s ease;
+}
+
+.station-marker.active .marker-diamond {
+  opacity: 1;
+  animation: markerPulse 1.6s ease-in-out infinite;
+}
+
+.station-marker::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 1px solid rgba(255,214,0,0.35);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.station-marker.active::after {
+  animation: ringPulse 1.8s ease-out infinite;
+}
+
+@keyframes markerPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,214,0,0.5), 0 0 18px rgba(255,140,0,0.3); }
+  50% { box-shadow: 0 0 16px rgba(255,214,0,0.9), 0 0 32px rgba(255,140,0,0.55); }
+}
+
+@keyframes ringPulse {
+  0% { transform: scale(0.5); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.station-marker-label {
+  position: absolute;
+  top: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  color: #ffe9a8;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 6px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.station-marker:hover .station-marker-label {
+  opacity: 1;
+}
